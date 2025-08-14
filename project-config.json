@@ -1,0 +1,13 @@
+{
+    "name": "GameOfLife64",
+    "description": "Project GameOfLife64",
+    "toolkit": "oscar64",
+    "sources": [
+        "src/main.c"
+    ],
+    "build": "debug",
+    "definitions": [],
+    "includes": [],
+    "args": [],
+    "compiler": ""
+}
