@@ -24,6 +24,14 @@ unsigned char next[BHEIGHT][BWIDTH];
 // Each byte represents a character on the screen.
 unsigned char *screen = (unsigned char *)0x0400;
 
+// Pointers for background and border colors.
+unsigned char *bg_color = (unsigned char *)0xD021;
+unsigned char *border_color = (unsigned char *)0xD020;
+
+// Pointer to color RAM starting at $D800.
+// This controls the foreground color for each screen character position.
+unsigned char *color_ram = (unsigned char *)0xD800;
+
 // Function to update the border cells to simulate toroidal wrapping.
 // This copies the opposite edges to the borders, handling horizontal and vertical wraps.
 void update_borders() 
@@ -47,7 +55,7 @@ void update_borders()
 
 // Function to compute the next generation based on Game of Life rules.
 // For each cell, count live neighbors and decide if it lives, dies, or is born.
-void compute_next() 
+void calc_next_gen() 
 {
     int y, x;
     int count;
@@ -82,37 +90,16 @@ void compute_next()
     }
 }
 
-// Function to display the current grid on the screen.
-// Maps alive cells to '*' and dead to ' '.
-void display() 
+void initialize_grid()
 {
-    int y, x;
-    // Loop over the inner grid and write to screen memory
-    for (y = 1; y <= HEIGHT; y++) 
-    {
-        for (x = 1; x <= WIDTH; x++) 
-        {
-            // Calculate screen position: row-major order
-            screen[(y - 1) * WIDTH + (x - 1)] = current[y][x] ? '*' : ' ';
-        }
-    }
-}
-
-// Main function: entry point of the program.
-int main() 
-{
-    // Pointer to raster line counter for seeding random number generator.
-    // Uses the current raster position as a semi-random seed.
+    // Use the current raster position as a (semi)random seed for srand()
     unsigned char *raster = (unsigned char *)0xd012;
-    srand(*raster);  // Seed random with raster value for variability
-
-    // Clear the screen
-    clrscr();  
+    srand(*raster);
 
     // Initialize the current grid to all dead (0)
     memset(current, 0, sizeof(current));
 
-    // Initialize random starting configuration
+    // Initialize random start grid
     int y, x;
     for (y = 1; y <= HEIGHT; y++) 
     {
@@ -122,22 +109,60 @@ int main()
             current[y][x] = rand() & 1;
         }
     }
+}
 
-    // Main simulation loop: runs forever until key press
+// Function to display the current grid on the screen.
+// Uses conio gotoxy and cputc to set position and character, which also applies the current text color.
+void update_display() 
+{
+    int y, x;
+    // Loop over the inner grid
+    for (y = 1; y <= HEIGHT; y++) 
+    {
+        for (x = 1; x <= WIDTH; x++) 
+        {
+            // Calculate screen position (row-major order)
+            int pos = (y - 1) * WIDTH + (x - 1);
+
+            // Set the cell & colour
+            screen[pos] = current[y][x] ? '*' : ' ';
+            color_ram[pos] = 1; 
+        }
+    }
+}
+
+void set_colours()
+{
+    // Set background and border to black (color 0)
+    *bg_color = 0;
+    *border_color = 0;    
+}
+
+// Main function: entry point of the program.
+int main() 
+{
+    //  Set the start grid
+    initialize_grid();
+
+    // Clear the screen
+    set_colours();
+    clrscr();
+
+    //  Run main loop until user presses a key
     while (true) 
     {
-        display();        // Update screen with current state
+        update_display(); // Update screen with current state
         update_borders(); // Handle wrapping
-        compute_next();   // Calculate next generation
+        calc_next_gen();  // Calculate next generation
         
         // Copy next to current for the next iteration
         memcpy(current, next, sizeof(next));
 
-        // Check for key press to exit
+        // Key press?
         if (kbhit()) 
         {
             getch();  // Consume the key
-            break;    // Exit loop
+            break;    // We're done!
         }
     }
 
