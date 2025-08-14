@@ -15,10 +15,11 @@
 #define BWIDTH (WIDTH + 2)   // Bordered width (extra columns on left and right)
 #define BHEIGHT (HEIGHT + 2) // Bordered height (extra rows on top and bottom)
 
-// 2D arrays for current and next generations.
-// Using unsigned char for memory efficiency (0 or 1 values).
-unsigned char current[BHEIGHT][BWIDTH];
-unsigned char next[BHEIGHT][BWIDTH];
+// ---- ONE CHANGE: use 1D arrays + an index macro --------------------------------
+#define IDX(y,x) ((y) * BWIDTH + (x))    // map (y,x) to linear index
+unsigned char current[BHEIGHT * BWIDTH];
+unsigned char next[BHEIGHT * BWIDTH];
+// -------------------------------------------------------------------------------
 
 // Pointer to the C64 screen memory starting at $0400.
 // Each byte represents a character on the screen.
@@ -33,15 +34,15 @@ void update_borders()
     // Handle horizontal wrapping: left border copies from right edge, right from left.
     for (y = 1; y <= HEIGHT; y++) 
     {
-        current[y][0] = current[y][WIDTH];          // Left border = right edge
-        current[y][BWIDTH - 1] = current[y][1];     // Right border = left edge
+        current[IDX(y,0)]          = current[IDX(y,WIDTH)];      // Left border = right edge
+        current[IDX(y,BWIDTH - 1)] = current[IDX(y,1)];          // Right border = left edge
     }
 
     // Handle vertical wrapping: top border copies from bottom edge, bottom from top.
     for (x = 0; x < BWIDTH; x++) 
     {
-        current[0][x] = current[HEIGHT][x];         // Top border = bottom row
-        current[BHEIGHT - 1][x] = current[1][x];    // Bottom border = top row
+        current[IDX(0,x)]           = current[IDX(HEIGHT,x)];    // Top border = bottom row
+        current[IDX(BHEIGHT - 1,x)] = current[IDX(1,x)];         // Bottom border = top row
     }
 }
 
@@ -58,25 +59,25 @@ void calc_next_gen()
         for (x = 1; x <= WIDTH; x++) 
         {
             // Count the 8 neighbors (Moore neighborhood)
-            count = current[y - 1][x - 1];
-            count += current[y - 1][x];
-            count += current[y - 1][x + 1];
-            count += current[y][x - 1];
-            count += current[y][x + 1];
-            count += current[y + 1][x - 1];
-            count += current[y + 1][x];
-            count += current[y + 1][x + 1];
+            count  = current[IDX(y - 1, x - 1)];
+            count += current[IDX(y - 1, x)];
+            count += current[IDX(y - 1, x + 1)];
+            count += current[IDX(y,     x - 1)];
+            count += current[IDX(y,     x + 1)];
+            count += current[IDX(y + 1, x - 1)];
+            count += current[IDX(y + 1, x)];
+            count += current[IDX(y + 1, x + 1)];
             
             // Apply Conway's rules
             // - If alive (current[y][x] == 1): survives if 2 or 3 neighbors
             // - If dead: born if exactly 3 neighbors
-            if (current[y][x]) 
+            if (current[IDX(y,x)]) 
             {
-                next[y][x] = (count == 2 || count == 3) ? 1 : 0;
+                next[IDX(y,x)] = (count == 2 || count == 3) ? 1 : 0;
             } 
             else 
             {
-                next[y][x] = (count == 3) ? 1 : 0;
+                next[IDX(y,x)] = (count == 3) ? 1 : 0;
             }
         }
     }
@@ -98,7 +99,7 @@ void initialize_grid()
         for (x = 1; x <= WIDTH; x++) 
         {
             // Set cell to 1 (alive) with 50% chance (rand() & 1)
-            current[y][x] = rand() & 1;
+            current[IDX(y,x)] = rand() & 1;
         }
     }
 }
@@ -116,7 +117,7 @@ void update_display()
             int pos = (y - 1) * WIDTH + (x - 1);
 
             // Set the cell & colour
-            screen[pos] = current[y][x] ? '*' : ' ';
+            screen[pos] = current[IDX(y,x)] ? '*' : ' ';
         }
     }
 }
