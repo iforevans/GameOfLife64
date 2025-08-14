@@ -24,14 +24,6 @@ unsigned char next[BHEIGHT][BWIDTH];
 // Each byte represents a character on the screen.
 unsigned char *screen = (unsigned char *)0x0400;
 
-// Pointers for background and border colors.
-unsigned char *bg_color = (unsigned char *)0xD021;
-unsigned char *border_color = (unsigned char *)0xD020;
-
-// Pointer to color RAM starting at $D800.
-// This controls the foreground color for each screen character position.
-unsigned char *color_ram = (unsigned char *)0xD800;
-
 // Function to update the border cells to simulate toroidal wrapping.
 // This copies the opposite edges to the borders, handling horizontal and vertical wraps.
 void update_borders() 
@@ -112,7 +104,6 @@ void initialize_grid()
 }
 
 // Function to display the current grid on the screen.
-// Uses conio gotoxy and cputc to set position and character, which also applies the current text color.
 void update_display() 
 {
     int y, x;
@@ -126,7 +117,6 @@ void update_display()
 
             // Set the cell & colour
             screen[pos] = current[y][x] ? '*' : ' ';
-            color_ram[pos] = 1; 
         }
     }
 }
@@ -134,8 +124,9 @@ void update_display()
 void set_colours()
 {
     // Set background and border to black (color 0)
-    *bg_color = 0;
-    *border_color = 0;    
+    bgcolor(COLOR_BLACK);
+    bordercolor(COLOR_BLACK);
+    textcolor(COLOR_WHITE);
 }
 
 // Main function: entry point of the program.
