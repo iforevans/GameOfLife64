@@ -126,7 +126,7 @@ void set_colours()
     // Set background and border to black (color 0)
     bgcolor(COLOR_BLACK);
     bordercolor(COLOR_BLACK);
-    textcolor(COLOR_WHITE);
+    textcolor(COLOR_GREEN);
 }
 
 // Main function: entry point of the program.
