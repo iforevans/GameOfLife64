@@ -129,6 +129,7 @@ int main()
         display();        // Update screen with current state
         update_borders(); // Handle wrapping
         compute_next();   // Calculate next generation
+        
         // Copy next to current for the next iteration
         memcpy(current, next, sizeof(next));
 
@@ -140,5 +141,6 @@ int main()
         }
     }
 
-    return 0;  // Program end
+    // All done
+    return 0;  
 }
