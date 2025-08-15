@@ -15,10 +15,14 @@
 #define BWIDTH (WIDTH + 2)   // Bordered width (extra columns on left and right)
 #define BHEIGHT (HEIGHT + 2) // Bordered height (extra rows on top and bottom)
 
-// Changed to 1D arrays + an index macro --------------------------------
+// Changed to 1D arrays + an index macro
 #define IDX(y,x) ((y) * BWIDTH + (x))    // map (y,x) to linear index
-unsigned char current[BHEIGHT * BWIDTH];
-unsigned char next[BHEIGHT * BWIDTH];
+
+// Use pointer-swapped buffers instead of copy arrays or buffers around
+static unsigned char buf0[BHEIGHT * BWIDTH];
+static unsigned char buf1[BHEIGHT * BWIDTH];
+static unsigned char *current = buf0;    // points to "current" generation buffer
+static unsigned char *next    = buf1;    // points to "next" generation buffer
 // -------------------------------------------------------------------------------
 
 // Pointer to the C64 screen memory starting at $0400.
@@ -69,8 +73,6 @@ void calc_next_gen()
             count += current[IDX(y + 1, x + 1)];
             
             // Apply Conway's rules
-            // - If alive (current[y][x] == 1): survives if 2 or 3 neighbors
-            // - If dead: born if exactly 3 neighbors
             if (current[IDX(y,x)]) 
             {
                 next[IDX(y,x)] = (count == 2 || count == 3) ? 1 : 0;
@@ -90,7 +92,7 @@ void initialize_grid()
     srand(*raster);
 
     // Initialize the current grid to all dead (0)
-    memset(current, 0, sizeof(current));
+    memset(current, 0, BHEIGHT * BWIDTH);  // NOTE: current is a pointer now
 
     // Initialize random start grid
     int y, x;
@@ -147,8 +149,8 @@ int main()
         update_borders(); // Handle wrapping
         calc_next_gen();  // Calculate next generation
         
-        // Copy next to current for the next iteration
-        memcpy(current, next, sizeof(next));
+        // Swap buffers instead of copying the whole array
+        { unsigned char *tmp = current; current = next; next = tmp; }
 
         // Key press?
         if (kbhit()) 
