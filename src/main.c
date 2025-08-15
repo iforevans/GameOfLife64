@@ -29,17 +29,21 @@ static unsigned char *screen = (unsigned char *)0x0400;
 
 void update_borders(void)
 {
-    int y, x;
-    for (y = 1; y <= HEIGHT; y++) 
+    // Horizontal wrap: fix left/right border cells for each inner row.
+    // Use a row pointer to avoid recalculating IDX() every time.
+    unsigned char *row = current + IDX(1,0);
+    for (int y = 1; y <= HEIGHT; ++y, row += BWIDTH) 
     {
-        current[IDX(y,0)]          = current[IDX(y,WIDTH)];
-        current[IDX(y,BWIDTH - 1)] = current[IDX(y,1)];
+        row[0] = row[WIDTH];        // left border <= right edge
+        row[BWIDTH - 1] = row[1];   // right border <= left edge
     }
-    for (x = 0; x < BWIDTH; x++) 
-    {
-        current[IDX(0,x)]            = current[IDX(HEIGHT,x)];
-        current[IDX(BHEIGHT - 1,x)]  = current[IDX(1,x)];
-    }
+
+    // Vertical wrap: copy whole rows in one go (includes the updated borders).
+    // Top border row (y=0) <= bottom inner row (y=HEIGHT)
+    memcpy(current + IDX(0,0), current + IDX(HEIGHT,0), BWIDTH);
+    
+    // Bottom border row (y=BHEIGHT-1) <= top inner row (y=1)
+    memcpy(current + IDX(BHEIGHT - 1,0),  current + IDX(1,0), BWIDTH);
 }
 
 // Compute next gen and build the NEXT frame's characters in screenBuf
@@ -113,19 +117,19 @@ int main(void)
 
     while (true) 
     {
-        // 1) Show the frame prepared during the previous iteration
+        // Show the frame prepared during the previous iteration
         update_display();
 
-        // 2) Prepare borders for current cells
+        // Prepare borders for current cells
         update_borders();
 
-        // 3) Compute next gen AND build the NEXT frame's characters in screenBuf
+        // Compute next gen AND build the NEXT frame's characters in screenBuf
         calc_next_gen();
 
-        // 4) Swap cell buffers (next becomes current)
+        // Swap cell buffers (next becomes current)
         { unsigned char *tmp = current; current = next; next = tmp; }
 
-        // 5) Exit on key press
+        // Exit on key press
         if (kbhit()) 
         { 
             getch(); break; 
