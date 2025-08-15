@@ -22,9 +22,11 @@ static unsigned char *current = buf0;
 static unsigned char *next    = buf1;    
 
 // Single off-screen display buffer (chars for the frame to be shown next)
-#define LIVE_CHAR '*'
-#define DEAD_CHAR ' '
 static unsigned char screenBuf[WIDTH * HEIGHT];
+
+//  Live and Dead chars
+#define LIVE_CHAR 0x51
+#define DEAD_CHAR ' '
 
 // C64 screen memory
 static unsigned char *screen = (unsigned char *)0x0400;
@@ -116,7 +118,7 @@ void set_colours(void)
 {
     bgcolor(COLOR_BLACK);
     bordercolor(COLOR_BLACK);
-    textcolor(COLOR_GREEN);
+    textcolor(COLOR_LT_GREEN); 
 }
 
 int main(void)
