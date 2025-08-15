@@ -1,68 +1,56 @@
 // Game of Life implementation for Commodore 64 using Oscar64 C compiler.
-// This program simulates Conway's Game of Life on a toroidal grid (wraps around edges).
-// The grid is 40x25 to match the C64 screen size.
-// Cells are represented as 1 (alive) or 0 (dead).
-// The simulation runs in an infinite loop until a key is pressed.
+// Toroidal 40x25 grid. Uses pointer-swapped cell buffers and a single screen buffer.
 
-#include <stdlib.h>  // For rand() and srand()
-#include <conio.h>   // For clrscr(), kbhit(), getch()
-#include <string.h>  // For memset() and memcpy()
-#include <stdbool.h> // true & false
+#include <stdlib.h>
+#include <conio.h>
+#include <string.h>
+#include <stdbool.h>
 
-// Define grid dimensions: actual screen is 40x25, but we add borders for wrapping
-#define WIDTH 40    // Screen width
-#define HEIGHT 25   // Screen height
-#define BWIDTH (WIDTH + 2)   // Bordered width (extra columns on left and right)
-#define BHEIGHT (HEIGHT + 2) // Bordered height (extra rows on top and bottom)
+#define WIDTH 40
+#define HEIGHT 25
+#define BWIDTH (WIDTH + 2)
+#define BHEIGHT (HEIGHT + 2)
 
-// Changed to 1D arrays + an index macro
 #define IDX(y,x) ((y) * BWIDTH + (x))    // map (y,x) to linear index
 
-// Use pointer-swapped buffers instead of copy arrays or buffers around
+// Cell buffers (swapped via pointers)
 static unsigned char buf0[BHEIGHT * BWIDTH];
 static unsigned char buf1[BHEIGHT * BWIDTH];
-static unsigned char *current = buf0;    // points to "current" generation buffer
-static unsigned char *next    = buf1;    // points to "next" generation buffer
-// -------------------------------------------------------------------------------
+static unsigned char *current = buf0;    // current generation buffer
+static unsigned char *next    = buf1;    // next generation buffer
 
-// Pointer to the C64 screen memory starting at $0400.
-// Each byte represents a character on the screen.
-unsigned char *screen = (unsigned char *)0x0400;
+// Single off-screen display buffer (chars for the frame to be shown next)
+#define LIVE_CHAR '*'
+#define DEAD_CHAR ' '
+static unsigned char screenBuf[WIDTH * HEIGHT];
 
-// Function to update the border cells to simulate toroidal wrapping.
-// This copies the opposite edges to the borders, handling horizontal and vertical wraps.
-void update_borders() 
+// C64 screen memory
+static unsigned char *screen = (unsigned char *)0x0400;
+
+void update_borders(void)
 {
     int y, x;
-
-    // Handle horizontal wrapping: left border copies from right edge, right from left.
     for (y = 1; y <= HEIGHT; y++) 
     {
-        current[IDX(y,0)]          = current[IDX(y,WIDTH)];      // Left border = right edge
-        current[IDX(y,BWIDTH - 1)] = current[IDX(y,1)];          // Right border = left edge
+        current[IDX(y,0)]          = current[IDX(y,WIDTH)];
+        current[IDX(y,BWIDTH - 1)] = current[IDX(y,1)];
     }
-
-    // Handle vertical wrapping: top border copies from bottom edge, bottom from top.
     for (x = 0; x < BWIDTH; x++) 
     {
-        current[IDX(0,x)]           = current[IDX(HEIGHT,x)];    // Top border = bottom row
-        current[IDX(BHEIGHT - 1,x)] = current[IDX(1,x)];         // Bottom border = top row
+        current[IDX(0,x)]            = current[IDX(HEIGHT,x)];
+        current[IDX(BHEIGHT - 1,x)]  = current[IDX(1,x)];
     }
 }
 
-// Function to compute the next generation based on Game of Life rules.
-// For each cell, count live neighbors and decide if it lives, dies, or is born.
-void calc_next_gen() 
+// Compute next gen and build the NEXT frame's characters in screenBuf
+void calc_next_gen(void)
 {
-    int y, x;
-    int count;
-
-    // Loop over the inner grid (don't include the borders!)
+    int y, x, count;
     for (y = 1; y <= HEIGHT; y++) 
     {
+        int srow = (y - 1) * WIDTH;  // row offset in screenBuf
         for (x = 1; x <= WIDTH; x++) 
         {
-            // Count the 8 neighbors (Moore neighborhood)
             count  = current[IDX(y - 1, x - 1)];
             count += current[IDX(y - 1, x)];
             count += current[IDX(y - 1, x + 1)];
@@ -71,95 +59,77 @@ void calc_next_gen()
             count += current[IDX(y + 1, x - 1)];
             count += current[IDX(y + 1, x)];
             count += current[IDX(y + 1, x + 1)];
-            
-            // Apply Conway's rules
-            if (current[IDX(y,x)]) 
-            {
-                next[IDX(y,x)] = (count == 2 || count == 3) ? 1 : 0;
-            } 
-            else 
-            {
-                next[IDX(y,x)] = (count == 3) ? 1 : 0;
-            }
+
+            unsigned char v = current[IDX(y,x)]
+                              ? (unsigned char)((count == 2) || (count == 3))
+                              : (unsigned char)(count == 3);
+
+            next[IDX(y,x)] = v;
+            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;  // prepare next frame text
         }
     }
 }
 
-void initialize_grid()
+void initialize_grid(void)
 {
-    // Use the current raster position as a (semi)random seed for srand()
+    //  Get a (semi)random seed for srand by using the current raster line
     unsigned char *raster = (unsigned char *)0xd012;
     srand(*raster);
 
-    // Initialize the current grid to all dead (0)
-    memset(current, 0, BHEIGHT * BWIDTH);  // NOTE: current is a pointer now
+    //  Clear the grid
+    memset(current, 0, BHEIGHT * BWIDTH);
 
-    // Initialize random start grid
-    int y, x;
-    for (y = 1; y <= HEIGHT; y++) 
+    // Fill current cells and build the initial screenBuf (first frame)
+    for (int y = 1; y <= HEIGHT; y++) 
     {
-        for (x = 1; x <= WIDTH; x++) 
+        int srow = (y - 1) * WIDTH;
+        for (int x = 1; x <= WIDTH; x++) 
         {
-            // Set cell to 1 (alive) with 50% chance (rand() & 1)
-            current[IDX(y,x)] = rand() & 1;
+            unsigned char v = (unsigned char)(rand() & 1);
+            current[IDX(y,x)] = v;
+            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;
         }
     }
 }
 
-// Function to display the current grid on the screen.
-void update_display() 
+// Fast display: copy the prepared chars to the visible screen
+void update_display(void)
 {
-    int y, x;
-    // Loop over the inner grid
-    for (y = 1; y <= HEIGHT; y++) 
-    {
-        for (x = 1; x <= WIDTH; x++) 
-        {
-            // Calculate screen position (row-major order)
-            int pos = (y - 1) * WIDTH + (x - 1);
-
-            // Set the cell & colour
-            screen[pos] = current[IDX(y,x)] ? '*' : ' ';
-        }
-    }
+    memcpy(screen, screenBuf, WIDTH * HEIGHT);
 }
 
-void set_colours()
+void set_colours(void)
 {
-    // Set background and border to black (color 0)
     bgcolor(COLOR_BLACK);
     bordercolor(COLOR_BLACK);
     textcolor(COLOR_GREEN);
 }
 
-// Main function: entry point of the program.
-int main() 
+int main(void)
 {
-    //  Set the start grid
     initialize_grid();
-
-    // Clear the screen
     set_colours();
     clrscr();
 
-    //  Run main loop until user presses a key
     while (true) 
     {
-        update_display(); // Update screen with current state
-        update_borders(); // Handle wrapping
-        calc_next_gen();  // Calculate next generation
-        
-        // Swap buffers instead of copying the whole array
+        // 1) Show the frame prepared during the previous iteration
+        update_display();
+
+        // 2) Prepare borders for current cells
+        update_borders();
+
+        // 3) Compute next gen AND build the NEXT frame's characters in screenBuf
+        calc_next_gen();
+
+        // 4) Swap cell buffers (next becomes current)
         { unsigned char *tmp = current; current = next; next = tmp; }
 
-        // Key press?
+        // 5) Exit on key press
         if (kbhit()) 
-        {
-            getch();  // Consume the key
-            break;    // We're done!
+        { 
+            getch(); break; 
         }
     }
-
-    // All done
-    return 0;  
+    return 0;
 }
