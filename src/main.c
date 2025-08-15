@@ -49,27 +49,32 @@ void update_borders(void)
 // Compute next gen and build the NEXT frame's characters in screenBuf
 void calc_next_gen(void)
 {
-    int y, x, count;
-    for (y = 1; y <= HEIGHT; y++) 
+    // Tell the optimizer these point to *non-overlapping* buffers.
+    unsigned char * cur = current;
+    unsigned char * nxt = next;
+
+    // Branch-free rule tables: next state given alive? and neighbor count.
+    static const unsigned char next_from_dead[9]  = {0,0,0,1,0,0,0,0,0};
+    static const unsigned char next_from_alive[9] = {0,0,1,1,0,0,0,0,0};
+
+    for (int y = 1; y <= HEIGHT; ++y) 
     {
-        int srow = (y - 1) * WIDTH;  // row offset in screenBuf
-        for (x = 1; x <= WIDTH; x++) 
+        int srow = (y - 1) * WIDTH;          // row offset in screenBuf
+        int base = y * BWIDTH;               // start index of row y in bordered grid
+
+        for (int x = 1; x <= WIDTH; ++x) 
         {
-            count  = current[IDX(y - 1, x - 1)];
-            count += current[IDX(y - 1, x)];
-            count += current[IDX(y - 1, x + 1)];
-            count += current[IDX(y,     x - 1)];
-            count += current[IDX(y,     x + 1)];
-            count += current[IDX(y + 1, x - 1)];
-            count += current[IDX(y + 1, x)];
-            count += current[IDX(y + 1, x + 1)];
+            // Compute neighbor count using flat indices (no IDX() call overhead)
+            unsigned char n =
+                cur[base - BWIDTH + x - 1] + cur[base - BWIDTH + x] + cur[base - BWIDTH + x + 1] +
+                cur[base            + x - 1]                          + cur[base            + x + 1] +
+                cur[base + BWIDTH   + x - 1] + cur[base + BWIDTH   + x] + cur[base + BWIDTH   + x + 1];
 
-            unsigned char v = current[IDX(y,x)]
-                              ? (unsigned char)((count == 2) || (count == 3))
-                              : (unsigned char)(count == 3);
+            unsigned char alive = cur[base + x];
+            unsigned char v = alive ? next_from_alive[n] : next_from_dead[n];
 
-            next[IDX(y,x)] = v;
-            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;  // prepare next frame text
+            nxt[base + x] = v;                                      // write next state
+            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;  // build next frame text
         }
     }
 }

@@ -5,7 +5,7 @@
     "sources": [
         "src/main.c"
     ],
-    "build": "debug",
+    "build": "release",
     "definitions": [],
     "includes": [],
     "args": [],
