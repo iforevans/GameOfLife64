@@ -15,7 +15,7 @@
 #define BWIDTH (WIDTH + 2)   // Bordered width (extra columns on left and right)
 #define BHEIGHT (HEIGHT + 2) // Bordered height (extra rows on top and bottom)
 
-// ---- ONE CHANGE: use 1D arrays + an index macro --------------------------------
+// Changed to 1D arrays + an index macro --------------------------------
 #define IDX(y,x) ((y) * BWIDTH + (x))    // map (y,x) to linear index
 unsigned char current[BHEIGHT * BWIDTH];
 unsigned char next[BHEIGHT * BWIDTH];
