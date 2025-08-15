@@ -11,13 +11,15 @@
 #define BWIDTH (WIDTH + 2)
 #define BHEIGHT (HEIGHT + 2)
 
-#define IDX(y,x) ((y) * BWIDTH + (x))    // map (y,x) to linear index
+// Map (y,x) to correct index in our 1D buffer
+// Remember arrays in C are in Row Major Order ...
+#define IDX(y,x) ((y) * BWIDTH + (x))    
 
-// Cell buffers (swapped via pointers)
+// Current and Next Gen Cell buffers (swapped via pointers)
 static unsigned char buf0[BHEIGHT * BWIDTH];
 static unsigned char buf1[BHEIGHT * BWIDTH];
-static unsigned char *current = buf0;    // current generation buffer
-static unsigned char *next    = buf1;    // next generation buffer
+static unsigned char *current = buf0;    
+static unsigned char *next    = buf1;    
 
 // Single off-screen display buffer (chars for the frame to be shown next)
 #define LIVE_CHAR '*'
@@ -54,13 +56,16 @@ void calc_next_gen(void)
     unsigned char * nxt = next;
 
     // Branch-free rule tables: next state given alive? and neighbor count.
+    // Lookup is faster that multiple IFs and doesn't get messed with when optimized by the compiler
     static const unsigned char next_from_dead[9]  = {0,0,0,1,0,0,0,0,0};
     static const unsigned char next_from_alive[9] = {0,0,1,1,0,0,0,0,0};
 
     for (int y = 1; y <= HEIGHT; ++y) 
     {
-        int srow = (y - 1) * WIDTH;          // row offset in screenBuf
-        int base = y * BWIDTH;               // start index of row y in bordered grid
+        // Row offset in screenBuf
+        int srow = (y - 1) * WIDTH;          
+        // Start index of row y in bordered grid
+        int base = y * BWIDTH;               
 
         for (int x = 1; x <= WIDTH; ++x) 
         {
@@ -137,7 +142,8 @@ int main(void)
         // Exit on key press
         if (kbhit()) 
         { 
-            getch(); break; 
+            getch(); 
+            break; 
         }
     }
     return 0;
