@@ -59,6 +59,7 @@ void calc_next_gen(void)
 
     // Branch-free rule tables: next state given alive? and neighbor count.
     // Lookup is faster that multiple IFs and doesn't get messed with when optimized by the compiler
+    //  This is really cool, and I cannot take credit for this idea ...
     static const unsigned char next_from_dead[9]  = {0,0,0,1,0,0,0,0,0};
     static const unsigned char next_from_alive[9] = {0,0,1,1,0,0,0,0,0};
 
