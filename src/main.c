@@ -104,9 +104,14 @@ void calc_next_gen(void)
         for (int x = 1; x <= WIDTH; ++x)
         {
             unsigned char n =
-                cur[base - BWIDTH + x - 1] + cur[base - BWIDTH + x] + cur[base - BWIDTH + x + 1] +
-                cur[base            + x - 1]                          + cur[base            + x + 1] +
-                cur[base + BWIDTH   + x - 1] + cur[base + BWIDTH   + x] + cur[base + BWIDTH   + x + 1];
+                cur[base - BWIDTH + x - 1] + 
+                cur[base - BWIDTH + x] + 
+                cur[base - BWIDTH + x + 1] +
+                cur[base + x - 1] + 
+                cur[base + x + 1] +
+                cur[base + BWIDTH+ x - 1] + 
+                cur[base + BWIDTH + x] + 
+                cur[base + BWIDTH   + x + 1];
 
             unsigned char alive = cur[base + x];
             unsigned char v = alive ? next_from_alive[n] : next_from_dead[n];
