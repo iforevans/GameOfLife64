@@ -305,9 +305,13 @@ static void show_presets_menu(void)
             clear_grid();
             draw_preset(cy-1, cx-1, P_GLIDER, N_GLIDER);
             break;
+
+        // Leave space for gliders to fly
+        // It won't last long due to the C64's 
+        // small screen and the toroidal wraparound :-(
         case 'u': case 'U':
             clear_grid();
-            draw_preset(3, 2, P_GGUN, N_GGUN);   // leave space for gliders to fly
+            draw_preset(3, 2, P_GGUN, N_GGUN);   
             break;
         default:
             break;
