@@ -16,6 +16,13 @@
 #define BWIDTH (WIDTH + 2)
 #define BHEIGHT (HEIGHT + 2)
 
+// PETSCII codes for cursor keys on C64:
+// RIGHT=0x1D, LEFT=0x9D, DOWN=0x11, UP=0x91
+const unsigned char KEY_RIGHT = 0x1D;
+const unsigned char KEY_LEFT  = 0x9D;
+const unsigned char KEY_DOWN  = 0x11;
+const unsigned char KEY_UP    = 0x91;
+
 // Map (y,x) to correct index in our 1D buffer (row-major)
 #define IDX(y,x) ((y) * BWIDTH + (x))
 
@@ -39,7 +46,6 @@ static unsigned char *screen = (unsigned char *)0x0400;
 static const signed char P_BLOCK[][2]   = { {0,0},{1,0},{0,1},{1,1} };
 static const signed char P_BLINKER[][2] = { {0,0},{1,0},{2,0} };
 static const signed char P_GLIDER[][2]  = { {1,0},{2,1},{0,2},{1,2},{2,2} };
-
 static const signed char P_GGUN[][2] =
 {
     {0,4},{1,4},{0,5},{1,5},
@@ -53,6 +59,10 @@ static const signed char P_GGUN[][2] =
 #define N_GLIDER  (sizeof(P_GLIDER)/sizeof(P_GLIDER[0]))
 #define N_GGUN    (sizeof(P_GGUN)/sizeof(P_GGUN[0]))
 
+// Branch-free rule tables
+// (This is very cool, and I cannot take credit for this innovation)
+static const unsigned char next_from_dead[9]  = {0,0,0,1,0,0,0,0,0};
+static const unsigned char next_from_alive[9] = {0,0,1,1,0,0,0,0,0};
 
 // Charset helpers
 static inline void set_uppercase(void)
@@ -67,7 +77,7 @@ static inline void set_lowercase(void)
     *D018 = (unsigned char)(*D018 | 0x02);
 }
 
-// Copy borders to make the wrapping logic simpler
+// Copy horizontal and vertical borders to make the wrapping logic simpler
 void update_borders(void)
 {
     // Horizontal wrap: fix left/right border cells for each inner row.
@@ -83,16 +93,11 @@ void update_borders(void)
     memcpy(current + IDX(BHEIGHT - 1,0), current + IDX(1,0),       BWIDTH);          // bottom border row
 }
 
-// Calculate the next gen and build the NEXT frame's characters in screenBuf
+// Calculate the next gen, and build the NEXT frame's characters in screenBuf
 void calc_next_gen(void)
 {
     unsigned char *cur = current;
     unsigned char *nxt = next;
-
-    // Branch-free rule tables
-    // (This is very cool, and I cannot take credit for this innovation)
-    static const unsigned char next_from_dead[9]  = {0,0,0,1,0,0,0,0,0};
-    static const unsigned char next_from_alive[9] = {0,0,1,1,0,0,0,0,0};
 
     for (int y = 1; y <= HEIGHT; ++y)
     {
@@ -103,7 +108,7 @@ void calc_next_gen(void)
 
         for (int x = 1; x <= WIDTH; ++x)
         {
-            unsigned char n =
+            unsigned char neighbours =
                 cur[base - BWIDTH + x - 1] + 
                 cur[base - BWIDTH + x] + 
                 cur[base - BWIDTH + x + 1] +
@@ -114,7 +119,7 @@ void calc_next_gen(void)
                 cur[base + BWIDTH   + x + 1];
 
             unsigned char alive = cur[base + x];
-            unsigned char v = alive ? next_from_alive[n] : next_from_dead[n];
+            unsigned char v = alive ? next_from_alive[neighbours] : next_from_dead[neighbours];
 
             // Write next state
             nxt[base + x] = v;
@@ -190,13 +195,6 @@ static void draw_editor(void)
 {
     // Use graphics charset in editor so LIVE_CHAR shows as filled circle
     set_uppercase();
-
-    // PETSCII codes for cursor keys on C64:
-    // RIGHT=0x1D, LEFT=0x9D, DOWN=0x11, UP=0x91
-    const unsigned char KEY_RIGHT = 0x1D;
-    const unsigned char KEY_LEFT  = 0x9D;
-    const unsigned char KEY_DOWN  = 0x11;
-    const unsigned char KEY_UP    = 0x91;
 
     // Set up display
     build_screen_from_current();
@@ -275,7 +273,7 @@ static void draw_editor(void)
     }
 }
 
-// Stamp a pattern (list of (dx,dy) pairs) with top-left anchor at (y0,x0)
+// Draw a pattern (list of (dx,dy) pairs) with top-left anchor at (y0,x0)
 static void draw_preset(int y0, int x0, const signed char (*pts)[2], int n)
 {
     for (int i = 0; i < n; ++i)
@@ -343,12 +341,13 @@ static void show_main_menu(void)
     printf(p"3) Presets (Block, Blinker, Glider, Glider Gun)\r");
     printf(p"\rChoose 1-3: ");
 
+    // Loop until done
     while (true)
     {
         unsigned char k = (unsigned char)getch();
         if (k == '1') { initialize_grid_random(); break; }
-        if (k == '2') { clear_grid(); draw_editor();      break; }
-        if (k == '3') { show_presets_menu();              break; }
+        if (k == '2') { clear_grid(); draw_editor(); break; }
+        if (k == '3') { show_presets_menu(); break; }
     }
 }
 
