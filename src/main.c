@@ -1,4 +1,6 @@
-// Conway's Game of Life for Commodore 64 (Oscar64 C)
+// Conway's Game of Life for Commodore 64
+// By Ifor Evans (VS Code, VS64 Extension, and Oscar64 Compiler)
+
 // Toroidal 40x25 grid. Pointer-swapped cell buffers + single screen buffer.
 // Start menu (Random / Draw / Presets) prints in lower/uppercase (PETSCII)
 
