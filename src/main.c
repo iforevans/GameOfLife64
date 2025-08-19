@@ -193,14 +193,17 @@ static void draw_editor(void)
     const unsigned char KEY_DOWN  = 0x11;
     const unsigned char KEY_UP    = 0x91;
 
-    // Cursor in 1..WIDTH / 1..HEIGHT
-    int cx = WIDTH/2, cy = HEIGHT/2;
+    // Set up display
     build_screen_from_current();
     update_display();
 
+    // Valid values for co-ords = 1..WIDTH / 1..HEIGHT (0 is border wraps)
+    // And initial position in the middle of the screen
+    int cx = WIDTH/2, cy = HEIGHT/2;
+
     while (true)
     {
-        // Highlight cursor cell (reverse video)
+        // Highlight initial cursor cell (reverse video)
         int pos = (cy - 1) * WIDTH + (cx - 1);
         unsigned char orig = screen[pos];
         screen[pos] = (unsigned char)(orig | 0x80);   // reverse bit set
