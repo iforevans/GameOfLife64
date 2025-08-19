@@ -1,6 +1,7 @@
 // Conway's Game of Life for Commodore 64 (Oscar64 C)
 // Toroidal 40x25 grid. Pointer-swapped cell buffers + single screen buffer.
-// Start menu (Random / Draw / Presets) prints in lower/uppercase (PETSCII),
+// Start menu (Random / Draw / Presets) prints in lower/uppercase (PETSCII)
+
 #include <stdlib.h>
 #include <conio.h>
 #include <string.h>
@@ -25,11 +26,30 @@ static unsigned char *next    = buf1;
 static unsigned char screenBuf[WIDTH * HEIGHT];
 
 // Live and Dead chars
-#define LIVE_CHAR 0x51   // filled circle (Q key) in upper/graphics charset
+#define LIVE_CHAR 0x51  
 #define DEAD_CHAR ' '
 
 // C64 screen memory
 static unsigned char *screen = (unsigned char *)0x0400;
+
+// --- Preset patterns ---
+static const signed char P_BLOCK[][2]   = { {0,0},{1,0},{0,1},{1,1} };
+static const signed char P_BLINKER[][2] = { {0,0},{1,0},{2,0} };
+static const signed char P_GLIDER[][2]  = { {1,0},{2,1},{0,2},{1,2},{2,2} };
+
+static const signed char P_GGUN[][2] =
+{
+    {0,4},{1,4},{0,5},{1,5},
+    {10,4},{10,5},{10,6},{11,3},{11,7},{12,2},{12,8},{13,2},{13,8},{14,5},{15,3},{15,7},{16,4},{16,5},{16,6},{17,5},
+    {20,2},{20,3},{20,4},{21,2},{21,3},{21,4},{22,1},{22,5},{24,0},{24,1},{24,5},{24,6},
+    {34,2},{34,3},{35,2},{35,3}
+};
+
+#define N_BLOCK   (sizeof(P_BLOCK)/sizeof(P_BLOCK[0]))
+#define N_BLINKER (sizeof(P_BLINKER)/sizeof(P_BLINKER[0]))
+#define N_GLIDER  (sizeof(P_GLIDER)/sizeof(P_GLIDER[0]))
+#define N_GGUN    (sizeof(P_GGUN)/sizeof(P_GGUN[0]))
+
 
 // Charset helpers
 static inline void set_uppercase(void)
@@ -74,9 +94,9 @@ void calc_next_gen(void)
     for (int y = 1; y <= HEIGHT; ++y)
     {
         // Row offset in screenBuf
-        int srow = (y - 1) * WIDTH;   
+        int srow = (y - 1) * WIDTH;
         // Start index of row y in bordered grid
-        int base = y * BWIDTH;        
+        int base = y * BWIDTH;
 
         for (int x = 1; x <= WIDTH; ++x)
         {
@@ -89,10 +109,10 @@ void calc_next_gen(void)
             unsigned char v = alive ? next_from_alive[n] : next_from_dead[n];
 
             // Write next state
-            nxt[base + x] = v;                                      
+            nxt[base + x] = v;
 
             // Build next frame
-            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;  
+            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;
         }
     }
 }
@@ -122,10 +142,10 @@ void initialize_grid_random(void)
 // Build screenBuf from current (used after editing/presets), then show it
 static void build_screen_from_current(void)
 {
-    for (int y = 1; y <= HEIGHT; ++y) 
+    for (int y = 1; y <= HEIGHT; ++y)
     {
         int srow = (y - 1) * WIDTH;
-        for (int x = 1; x <= WIDTH; ++x) 
+        for (int x = 1; x <= WIDTH; ++x)
         {
             unsigned char v = current[IDX(y,x)];
             screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;
@@ -157,6 +177,7 @@ static void clear_grid(void)
 }
 
 // Simple editor (cursor keys move, SPACE toggle, X clears all, C clears row, ENTER starts)
+// Rewritten to use switch/case for key handling.
 static void draw_editor(void)
 {
     // Use graphics charset in editor so LIVE_CHAR shows as filled circle
@@ -170,18 +191,16 @@ static void draw_editor(void)
     const unsigned char KEY_UP    = 0x91;
 
     // Cursor in 1..WIDTH / 1..HEIGHT
-    int cx = WIDTH/2, cy = HEIGHT/2;   
+    int cx = WIDTH/2, cy = HEIGHT/2;
     build_screen_from_current();
     update_display();
 
-    while (true) 
+    while (true)
     {
         // Highlight cursor cell (reverse video)
         int pos = (cy - 1) * WIDTH + (cx - 1);
         unsigned char orig = screen[pos];
-
-        // Reverse bit set
-        screen[pos] = (unsigned char)(orig | 0x80);   
+        screen[pos] = (unsigned char)(orig | 0x80);   // reverse bit set
 
         // Wait for key
         unsigned char key = (unsigned char)getch();
@@ -189,51 +208,58 @@ static void draw_editor(void)
         // Restore original cell
         screen[pos] = orig;
 
-        if (key == ' ' ) 
+        switch (key)
         {
-            unsigned char v = (unsigned char)(current[IDX(cy,cx)] ^ 1);
-            current[IDX(cy,cx)] = v;
-            screenBuf[pos] = v ? LIVE_CHAR : DEAD_CHAR;
-            screen[pos]     = screenBuf[pos];
-        }
-        else if (key == 'x' || key == 'X') 
-        {          
-            // clear all
-            clear_grid();
-        }
-        else if (key == 'c' || key == 'C') 
-        {          
-            // clear this row
-            for (int x = 1; x <= WIDTH; ++x) current[IDX(cy,x)] = 0;
-            memset(screenBuf + (cy - 1) * WIDTH, DEAD_CHAR, WIDTH);
-            memcpy(screen + (cy - 1) * WIDTH, screenBuf + (cy - 1) * WIDTH, WIDTH);
-        }
-        else if (key == 13 || key == 10) 
-        {            
-            // ENTER → start simulation
-            build_screen_from_current();
-            update_display();
-            break;
-        }
-        else if (key == KEY_UP) 
-        {                   
-            // Move up
-            cy = (cy > 1) ? (cy - 1) : HEIGHT;
-        }
-        else if (key == KEY_DOWN) 
-        {                 
-            // move down
-            cy = (cy < HEIGHT) ? (cy + 1) : 1;
-        }
-        else if (key == KEY_LEFT) 
-        {                 
-            // move left
-            cx = (cx > 1) ? (cx - 1) : WIDTH;
-        }
-        else if (key == KEY_RIGHT) 
-        {                
-            // move right
-            cx = (cx < WIDTH) ? (cx + 1) : 1;
+            // Toggle current cell?
+            case ' ': 
+            {
+                
+                unsigned char v = (unsigned char)(current[IDX(cy,cx)] ^ 1);
+                current[IDX(cy,cx)] = v;
+                screenBuf[pos] = v ? LIVE_CHAR : DEAD_CHAR;
+                screen[pos]     = screenBuf[pos];
+            } break;
+
+            // Clear all?
+            case 'x': 
+            case 'X':
+                clear_grid();
+                break;
+
+            // Clear row?
+            case 'c': 
+            case 'C': 
+            {
+                for (int x = 1; x <= WIDTH; ++x) current[IDX(cy,x)] = 0;
+                memset(screenBuf + (cy - 1) * WIDTH, DEAD_CHAR, WIDTH);
+                memcpy(screen + (cy - 1) * WIDTH, screenBuf + (cy - 1) * WIDTH, WIDTH);
+            } break;
+
+            // Start simulation?
+            case 13: 
+            case 10:   
+                build_screen_from_current();
+                update_display();
+                return;
+
+            case KEY_UP:
+                cy = (cy > 1) ? (cy - 1) : HEIGHT;
+                break;
+
+            case KEY_DOWN:
+                cy = (cy < HEIGHT) ? (cy + 1) : 1;
+                break;
+
+            case KEY_LEFT:
+                cx = (cx > 1) ? (cx - 1) : WIDTH;
+                break;
+
+            case KEY_RIGHT:
+                cx = (cx < WIDTH) ? (cx + 1) : 1;
+                break;
+
+            default:
+                break;
         }
     }
 }
@@ -241,11 +267,11 @@ static void draw_editor(void)
 // Stamp a pattern (list of (dx,dy) pairs) with top-left anchor at (y0,x0)
 static void draw_preset(int y0, int x0, const signed char (*pts)[2], int n)
 {
-    for (int i = 0; i < n; ++i) 
+    for (int i = 0; i < n; ++i)
     {
         int y = y0 + pts[i][1];
         int x = x0 + pts[i][0];
-        if (y >= 1 && y <= HEIGHT && x >= 1 && x <= WIDTH) 
+        if (y >= 1 && y <= HEIGHT && x >= 1 && x <= WIDTH)
         {
             current[IDX(y,x)] = 1;
             screenBuf[(y - 1) * WIDTH + (x - 1)] = LIVE_CHAR;
@@ -254,23 +280,6 @@ static void draw_preset(int y0, int x0, const signed char (*pts)[2], int n)
     update_display();
 }
 
-// --- Preset patterns ---
-static const signed char P_BLOCK[][2]   = { {0,0},{1,0},{0,1},{1,1} };
-static const signed char P_BLINKER[][2] = { {0,0},{1,0},{2,0} };
-static const signed char P_GLIDER[][2]  = { {1,0},{2,1},{0,2},{1,2},{2,2} };
-
-static const signed char P_GGUN[][2] = 
-{
-    {0,4},{1,4},{0,5},{1,5},
-    {10,4},{10,5},{10,6},{11,3},{11,7},{12,2},{12,8},{13,2},{13,8},{14,5},{15,3},{15,7},{16,4},{16,5},{16,6},{17,5},
-    {20,2},{20,3},{20,4},{21,2},{21,3},{21,4},{22,1},{22,5},{24,0},{24,1},{24,5},{24,6},
-    {34,2},{34,3},{35,2},{35,3}
-};
-
-#define N_BLOCK   (sizeof(P_BLOCK)/sizeof(P_BLOCK[0]))
-#define N_BLINKER (sizeof(P_BLINKER)/sizeof(P_BLINKER[0]))
-#define N_GLIDER  (sizeof(P_GLIDER)/sizeof(P_GLIDER[0]))
-#define N_GGUN    (sizeof(P_GGUN)/sizeof(P_GGUN[0]))
 
 static void show_presets_menu(void)
 {
@@ -282,7 +291,7 @@ static void show_presets_menu(void)
     unsigned char k = (unsigned char)getch();
     int cx = WIDTH/2, cy = HEIGHT/2;
 
-    switch (k) 
+    switch (k)
     {
         case 'b': case 'B':
             clear_grid();
@@ -319,12 +328,12 @@ static void show_main_menu(void)
     printf(p"3) Presets (Block, Blinker, Glider, Glider Gun)\r");
     printf(p"\rChoose 1-3: ");
 
-    while (true) 
+    while (true)
     {
         unsigned char k = (unsigned char)getch();
         if (k == '1') { initialize_grid_random(); break; }
         if (k == '2') { clear_grid(); draw_editor();      break; }
-        if (k == '3') { show_presets_menu();         break; }
+        if (k == '3') { show_presets_menu();              break; }
     }
 }
 
@@ -335,7 +344,7 @@ int main(void)
     set_colours();
 
     // choose and build initial state (also draws it once)
-    show_main_menu();    
+    show_main_menu();
 
     // Switch to graphics charset for the simulation frames
     set_uppercase();
@@ -347,13 +356,13 @@ int main(void)
     while (true)
     {
         // show frame prepared in previous iteration
-        update_display();   
+        update_display();
 
         // wrap borders
-        update_borders();   
-        
+        update_borders();
+
         // compute next gen + build next frame's chars
-        calc_next_gen();    
+        calc_next_gen();
 
         // swap cells
         { unsigned char *tmp = current; current = next; next = tmp; }
