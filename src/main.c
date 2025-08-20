@@ -36,7 +36,7 @@ static unsigned char *next    = buf1;
 static unsigned char screenBuf[WIDTH * HEIGHT];
 
 // Live and Dead chars
-#define LIVE_CHAR 0x51  
+#define LIVE_CHAR 0x51
 #define DEAD_CHAR ' '
 
 // C64 screen memory
@@ -109,13 +109,13 @@ void calc_next_gen(void)
         for (int x = 1; x <= WIDTH; ++x)
         {
             unsigned char neighbours =
-                cur[base - BWIDTH + x - 1] + 
-                cur[base - BWIDTH + x] + 
+                cur[base - BWIDTH + x - 1] +
+                cur[base - BWIDTH + x] +
                 cur[base - BWIDTH + x + 1] +
-                cur[base + x - 1] + 
+                cur[base + x - 1] +
                 cur[base + x + 1] +
-                cur[base + BWIDTH+ x - 1] + 
-                cur[base + BWIDTH + x] + 
+                cur[base + BWIDTH+ x - 1] +
+                cur[base + BWIDTH + x] +
                 cur[base + BWIDTH   + x + 1];
 
             unsigned char alive = cur[base + x];
@@ -220,9 +220,8 @@ static void draw_editor(void)
         switch (key)
         {
             // Toggle current cell?
-            case ' ': 
+            case ' ':
             {
-                
                 unsigned char v = (unsigned char)(current[IDX(cy,cx)] ^ 1);
                 current[IDX(cy,cx)] = v;
                 screenBuf[pos] = v ? LIVE_CHAR : DEAD_CHAR;
@@ -230,14 +229,14 @@ static void draw_editor(void)
             } break;
 
             // Clear all?
-            case 'x': 
+            case 'x':
             case 'X':
                 clear_grid();
                 break;
 
             // Clear row?
-            case 'c': 
-            case 'C': 
+            case 'c':
+            case 'C':
             {
                 for (int x = 1; x <= WIDTH; ++x) current[IDX(cy,x)] = 0;
                 memset(screenBuf + (cy - 1) * WIDTH, DEAD_CHAR, WIDTH);
@@ -245,8 +244,8 @@ static void draw_editor(void)
             } break;
 
             // Start simulation?
-            case 13: 
-            case 10:   
+            case 13:
+            case 10:
                 build_screen_from_current();
                 update_display();
                 return;
@@ -289,38 +288,42 @@ static void draw_preset(int y0, int x0, const signed char (*pts)[2], int n)
     update_display();
 }
 
-
 static void show_presets_menu(void)
 {
     clrscr();
     gotoxy(0,0);
     printf(p"Presets: B=Block  N=Blinker  G=Glider  U=Glider Gun  (Enter=cancel)\r");
 
-    // Wait for choice *before* clearing; avoids wiping submenu immediately.
-    unsigned char k = (unsigned char)getch();
+    // Set start drawing pos
     int cx = WIDTH/2, cy = HEIGHT/2;
 
-    switch (k)
+    // Wait for user keypress
+    unsigned char key = (unsigned char)getch();
+    switch (key)
     {
-        case 'b': case 'B':
+        case 'b': 
+        case 'B':
             clear_grid();
             draw_preset(cy, cx, P_BLOCK, N_BLOCK);
             break;
-        case 'n': case 'N':
+        case 'n': 
+        case 'N':
             clear_grid();
             draw_preset(cy, cx-1, P_BLINKER, N_BLINKER);
             break;
-        case 'g': case 'G':
+        case 'g': 
+        case 'G':
             clear_grid();
             draw_preset(cy-1, cx-1, P_GLIDER, N_GLIDER);
             break;
 
         // Leave space for gliders to fly
-        // It won't last long due to the C64's 
+        // It won't last long due to the C64's
         // small screen and the toroidal wraparound :-(
-        case 'u': case 'U':
+        case 'u': 
+        case 'U':
             clear_grid();
-            draw_preset(3, 2, P_GGUN, N_GGUN);   
+            draw_preset(3, 2, P_GGUN, N_GGUN);
             break;
         default:
             break;
@@ -330,58 +333,92 @@ static void show_presets_menu(void)
     update_display();
 }
 
-static void show_main_menu(void)
+// Returns 1 to start the simulation, 0 to quit to BASIC.
+static bool show_main_menu(void)
 {
-    set_lowercase();         // menus in lower/uppercase charset (text looks normal)
+    // Menus in lower/uppercase charset (text looks normal)
+    set_lowercase();         
     clrscr();
     gotoxy(0,0);
     printf(p"Conway's Life - C64\r");
     printf(p"1) Random start\r");
     printf(p"2) Draw your own (Use cursor keys to move, SPACE to toggle, X=CLEAR ALL, C=CLEAR ROW, ENTER=START)\r");
     printf(p"3) Presets (Block, Blinker, Glider, Glider Gun)\r");
-    printf(p"\rChoose 1-3: ");
+    printf(p"4) Quit\r");
+    printf(p"\rChoose 1-4: ");
 
     // Loop until done
     while (true)
     {
-        unsigned char k = (unsigned char)getch();
-        if (k == '1') { initialize_grid_random(); break; }
-        if (k == '2') { clear_grid(); draw_editor(); break; }
-        if (k == '3') { show_presets_menu(); break; }
+        //  Get user keypress
+        unsigned char key = (unsigned char)getch();
+
+        if (key == '1') 
+        { 
+            initialize_grid_random(); 
+            return true;
+        }
+
+        if (key == '2') 
+        { 
+            clear_grid(); 
+            draw_editor(); 
+            return true; 
+        }
+        
+        if (key == '3') 
+        { 
+            show_presets_menu(); 
+            return true; 
+        }
+
+        if (key == '4') 
+        { 
+            return false; 
+        }
     }
 }
 
 //  Main entry point for our app
 int main(void)
 {
-    // Start in text-friendly charset for menus
+    // Setup display
     set_colours();
 
-    // choose and build initial state (also draws it once)
-    show_main_menu();
-
-    // Switch to graphics charset for the simulation frames
-    set_uppercase();
-    clrscr();
-    build_screen_from_current();
-    update_display();
-
-    //  Main program loop
-    while (true)
+    // Loop: menu -> simulate -> back to menu (until Quit)
+    while (show_main_menu())
     {
-        // show frame prepared in previous iteration
+        // Prepare to run simulation
+        clrscr();
+        set_uppercase();
+        build_screen_from_current();
         update_display();
 
-        // wrap borders
-        update_borders();
+        // Simulation loop: any key returns to the main menu
+        while (true)
+        {
+            // show frame prepared in previous iteration
+            update_display();
 
-        // compute next gen + build next frame's chars
-        calc_next_gen();
+            // wrap borders
+            update_borders();
 
-        // swap cells
-        { unsigned char *tmp = current; current = next; next = tmp; }
+            // compute next gen + build next frame's chars
+            calc_next_gen();
 
-        if (kbhit()) { getch(); break; }
+            // swap cells
+            { unsigned char *tmp = current; current = next; next = tmp; }
+
+            if (kbhit()) { getch(); break; }  // back to menu
+        }
     }
+
+    // Back to BASIC
+    set_uppercase();
+    clrscr();
+    gotoxy(0,0);
+    printf(p"goodbye!\r");
+    
+    // All done
     return 0;
 }
