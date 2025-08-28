@@ -292,7 +292,12 @@ static void show_presets_menu(void)
 {
     clrscr();
     gotoxy(0,0);
-    printf(p"Presets: B=Block  N=Blinker  G=Glider  U=Glider Gun  (Enter=cancel)\r");
+    printf(p"Presets:\r\r");
+    printf(p"B=Block\r");
+    printf(p"N=Blinker\r");
+    printf(p"G=Glider\r");
+    printf(p"U=Glider Gun\r\r");
+    printf(p"Enter=cancel)\r");
 
     // Set start drawing pos
     int cx = WIDTH/2, cy = HEIGHT/2;
@@ -340,11 +345,17 @@ static bool show_main_menu(void)
     set_lowercase();         
     clrscr();
     gotoxy(0,0);
-    printf(p"Conway's Life - C64\r");
-    printf(p"1) Random start\r");
-    printf(p"2) Draw your own (Use cursor keys to move, SPACE to toggle, X=CLEAR ALL, C=CLEAR ROW, ENTER=START)\r");
-    printf(p"3) Presets (Block, Blinker, Glider, Glider Gun)\r");
-    printf(p"4) Quit\r");
+    printf(p"Conway's Game of Life\r\r");
+    printf(p"1) Random start\r\r");
+    printf(p"2) Draw your own\r");
+    printf(p"   Cursor keys to move,\r");
+    printf(p"   SPACE = toggle,\r");
+    printf(p"   X = CLEAR ALL,\r");
+    printf(p"   C = CLEAR ROW,\r");
+    printf(p"   ENTER = START)\r\r");
+    printf(p"3) Presets\r");
+    printf(p"   Block, Blinker, Glider, Glider Gun\r\r");
+    printf(p"4) Quit\r\r");
     printf(p"\rChoose 1-4: ");
 
     // Loop until done
