@@ -181,9 +181,7 @@ void set_colours(void)
 static void clear_grid(void)
 {
     memset(current, 0, BHEIGHT * BWIDTH);
-    for (int y = 0; y < HEIGHT; ++y) {
-        memset(screenBuf + y * WIDTH, DEAD_CHAR, WIDTH);
-    }
+    memset(screenBuf, DEAD_CHAR, WIDTH * HEIGHT);
     update_display();
 }
 
