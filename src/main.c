@@ -1,6 +1,6 @@
 // Conway's Game of Life for Commodore 64
 // By Ifor Evans
-// Tooling: VS Code, VS64 Extension, and the Oscar64 Compiler
+// Tooling: VS Code, VS64 Extension, and the Oscar64 C Compiler
 
 // Toroidal 40x25 grid. Pointer-swapped cell buffers + single screen buffer.
 // Start menu (Random / Draw / Presets) prints in lower/uppercase (PETSCII)
@@ -101,31 +101,29 @@ void calc_next_gen(void)
 
     for (int y = 1; y <= HEIGHT; ++y)
     {
-        // Row offset in screenBuf
-        int srow = (y - 1) * WIDTH;
-        // Start index of row y in bordered grid
-        int base = y * BWIDTH;
+        unsigned char *row_above = cur + (y - 1) * BWIDTH;
+        unsigned char *row       = cur + y * BWIDTH;
+        unsigned char *row_below = cur + (y + 1) * BWIDTH;
+        unsigned char *out       = nxt + y * BWIDTH;
+        unsigned char *s         = screenBuf + (y - 1) * WIDTH;
 
         for (int x = 1; x <= WIDTH; ++x)
         {
             unsigned char neighbours =
-                cur[base - BWIDTH + x - 1] +
-                cur[base - BWIDTH + x] +
-                cur[base - BWIDTH + x + 1] +
-                cur[base + x - 1] +
-                cur[base + x + 1] +
-                cur[base + BWIDTH+ x - 1] +
-                cur[base + BWIDTH + x] +
-                cur[base + BWIDTH   + x + 1];
+                row_above[x - 1] +
+                row_above[x] +
+                row_above[x + 1] +
+                row[x - 1] +
+                row[x + 1] +
+                row_below[x - 1] +
+                row_below[x] +
+                row_below[x + 1];
 
-            unsigned char alive = cur[base + x];
+            unsigned char alive = row[x];
             unsigned char v = alive ? next_from_alive[neighbours] : next_from_dead[neighbours];
 
-            // Write next state
-            nxt[base + x] = v;
-
-            // Build next frame
-            screenBuf[srow + (x - 1)] = v ? LIVE_CHAR : DEAD_CHAR;
+            out[x] = v;
+            s[x - 1] = v ? LIVE_CHAR : DEAD_CHAR;
         }
     }
 }
