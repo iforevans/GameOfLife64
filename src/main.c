@@ -99,7 +99,7 @@ void calc_next_gen(void)
     unsigned char *cur = current;
     unsigned char *nxt = next;
 
-    for (int y = 1; y <= HEIGHT; ++y)
+    for (unsigned char y = 1; y <= HEIGHT; ++y)
     {
         unsigned char *row_above = cur + (y - 1) * BWIDTH;
         unsigned char *row       = cur + y * BWIDTH;
@@ -107,7 +107,7 @@ void calc_next_gen(void)
         unsigned char *out       = nxt + y * BWIDTH;
         unsigned char *s         = screenBuf + (y - 1) * WIDTH;
 
-        for (int x = 1; x <= WIDTH; ++x)
+        for (unsigned char x = 1; x <= WIDTH; ++x)
         {
             unsigned char neighbours =
                 row_above[x - 1] +
