@@ -286,52 +286,63 @@ static void draw_preset(int y0, int x0, const signed char (*pts)[2], int n)
 
 static void show_presets_menu(void)
 {
-    clrscr();
-    gotoxy(0,0);
-    printf(p"Presets:\r\r");
-    printf(p"B=Block\r");
-    printf(p"N=Blinker\r");
-    printf(p"G=Glider\r");
-    printf(p"U=Glider Gun\r\r");
-    printf(p"Enter=cancel)\r");
-
     // Set start drawing pos
     int cx = WIDTH/2, cy = HEIGHT/2;
 
-    // Wait for user keypress
-    unsigned char key = (unsigned char)getch();
-    switch (key)
+    while (true)
     {
-        case 'b': 
-        case 'B':
-            clear_grid();
-            draw_preset(cy, cx, P_BLOCK, N_BLOCK);
-            break;
-        case 'n': 
-        case 'N':
-            clear_grid();
-            draw_preset(cy, cx-1, P_BLINKER, N_BLINKER);
-            break;
-        case 'g': 
-        case 'G':
-            clear_grid();
-            draw_preset(cy-1, cx-1, P_GLIDER, N_GLIDER);
-            break;
+        clrscr();
+        gotoxy(0,0);
+        printf(p"Presets:\r\r");
+        printf(p"B=Block\r");
+        printf(p"N=Blinker\r");
+        printf(p"G=Glider\r");
+        printf(p"U=Glider Gun\r\r");
+        printf(p"Enter=cancel)\r");
 
-        // Leave space for gliders to fly
-        // It won't last long due to the C64's
-        // small screen and the toroidal wraparound :-(
-        case 'u': 
-        case 'U':
-            clear_grid();
-            draw_preset(3, 2, P_GGUN, N_GGUN);
-            break;
-        default:
-            break;
+        unsigned char key = (unsigned char)getch();
+        switch (key)
+        {
+            case 'b':
+            case 'B':
+                clear_grid();
+                draw_preset(cy, cx, P_BLOCK, N_BLOCK);
+                build_screen_from_current();
+                update_display();
+                return;
+
+            case 'n':
+            case 'N':
+                clear_grid();
+                draw_preset(cy, cx-1, P_BLINKER, N_BLINKER);
+                build_screen_from_current();
+                update_display();
+                return;
+
+            case 'g':
+            case 'G':
+                clear_grid();
+                draw_preset(cy-1, cx-1, P_GLIDER, N_GLIDER);
+                build_screen_from_current();
+                update_display();
+                return;
+
+            case 'u':
+            case 'U':
+                clear_grid();
+                draw_preset(3, 2, P_GGUN, N_GGUN);
+                build_screen_from_current();
+                update_display();
+                return;
+
+            case 13:
+            case 10:
+                return;
+
+            default:
+                break;
+        }
     }
-
-    build_screen_from_current();
-    update_display();
 }
 
 // Returns 1 to start the simulation, 0 to quit to BASIC.
@@ -399,7 +410,6 @@ int main(void)
         clrscr();
         set_uppercase();
         build_screen_from_current();
-        update_display();
 
         // Simulation loop: any key returns to the main menu
         while (true)
@@ -416,7 +426,7 @@ int main(void)
             // swap cells
             { unsigned char *tmp = current; current = next; next = tmp; }
 
-            if (kbhit()) { getch(); break; }  // back to menu
+            if (kbhit()) { while (kbhit()) getch(); break; }  // drain buffer, back to menu
         }
     }
 
