@@ -130,9 +130,16 @@ void calc_next_gen(void)
 
 void initialize_grid_random(void)
 {
-    //  Get a (semi)random seed for srand by using the current raster line
-    volatile unsigned char *raster = (unsigned char *)0xD012;
-    srand(*raster);
+    //  Get a random seed for srand: the raster position mixed with the SID
+    //  voice-3 noise oscillator. The oscillator must first be switched to the
+    //  noise waveform (it is frozen at power-up), then OSC3 free-runs with
+    //  genuine entropy. The '| 1' guards against the zero seed, which the
+    //  xorshift rand() in oscar64's stdlib can never recover from.
+    volatile unsigned char *raster  = (unsigned char *)0xD012;
+    volatile unsigned char *vcreg3  = (unsigned char *)0xD412;  // SID VCREG3
+    volatile unsigned char *osc3    = (unsigned char *)0xD41B;  // SID OSC3
+    *vcreg3 = 0x80;               // noise waveform, gate off
+    srand(((unsigned)(*raster) << 8) | *osc3 | 1);
 
     //  Clear the grid
     memset(current, 0, BHEIGHT * BWIDTH);
